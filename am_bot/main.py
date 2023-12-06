@@ -27,7 +27,7 @@ def main(dry_run: bool = False, owner_name: str = "Santiago"):
         for gifter, gifted in results.items():
             body = f"""Te toca regalarle a {gifted}, buena suerte"""
             if gifted == owner_name:
-                body = f"""Te toca regalarle a {gifted}, mas vale que pienses un buen regalo"""
+                body = f"""Te toca regalarle a {gifted}, más vale que pienses un buen regalo"""
             message = send_message(service= service,
                 sender=our_email,
                 destination= participants[gifter],
