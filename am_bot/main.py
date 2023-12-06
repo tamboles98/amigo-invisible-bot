@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import logging
 
 from utils import gmail_authenticate, send_message, sorteo
 
@@ -35,4 +36,10 @@ def main(dry_run: bool = False, owner_name: str = "Santiago"):
             )
 
 if __name__ == '__main__':
-    main(True)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler())
+    dry_run_input = input("Dry run? [Y/n]")
+    dry_run = not dry_run_input == "n"
+    logger.info('Dry run is: %s', dry_run)
+    main(dry_run)
