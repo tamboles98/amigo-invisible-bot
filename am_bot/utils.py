@@ -1,11 +1,11 @@
-import os
 import pickle
+import typing as ty
 # Gmail API utils
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 # for encoding/decoding messages in base64
-from base64 import urlsafe_b64decode, urlsafe_b64encode
+from base64 import urlsafe_b64encode
 # for dealing with attachement MIME types
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -62,16 +62,36 @@ def send_message(service, sender, destination, obj, body, attachments=[]):
     ).execute()
     
     
-def sorteo(participants: list):
-    if not participants:
-        raise ValueError("No participants!")
+def sorteo(participants: list,
+           disallowed_pairs: ty.Optional[list[tuple[str, str]]] = None):
+    if disallowed_pairs is None:
+        disallowed_pairs = []
+    assert len(set(participants)) == len(participants), "Duplicate participants"
+    if len(participants) < 2:
+        raise ValueError(f"Cannot organize a lottery with only {len(participants)}!")
     idxs = [i for i in range(len(participants))]
-    random.shuffle(idxs)
-    
-    givers = idxs
-    receivers = deque(givers)
-    receivers.rotate(1)
-    return {participants[g]: participants[r] for g, r in zip(givers, receivers)}
+    # Try to generate a valid lottery, strop trying after 200 attempts. If the
+    # limit is breached we assume that a valid lottery is not possible
+    #! This approach is an approximation, if the number of disallowed pairs is
+    # high its possible that this method will fail even if the lottery is
+    # theoretically possible
+    for _ in range(200):
+        invalid = False
+        random.shuffle(idxs)
+        givers = idxs
+        receivers = deque(givers)
+        receivers.rotate(1)
+        #Check that the lottery is valid
+        res = {participants[g]: participants[r] for g, r in zip(givers, receivers)}
+        for giver, receiver in disallowed_pairs:
+            if res[giver] == receiver:
+                invalid = True
+                break
+        if invalid:
+            continue
+        else:
+            return res
+    raise ValueError('No valid lottery could be found')
         
     
     
