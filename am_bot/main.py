@@ -4,7 +4,7 @@ from pathlib import Path
 from utils import gmail_authenticate, send_message, sorteo
 
 
-def main():
+def main(dry_run: bool = False, owner_name: str = "Santiago"):
     our_email = "santiagocebellanbot@gmail.com"
 
     with open('config/participants.json', 'r') as file:
@@ -19,17 +19,20 @@ def main():
         disallowed_pairs: list[tuple[str, str]] = []
         
     results = sorteo(list(participants.keys()), disallowed_pairs)
+    if not dry_run:
+        # get the Gmail API service
+        service = gmail_authenticate()
 
-    # get the Gmail API service
-    service = gmail_authenticate()
-
-    for gifter, gifted in results.items():
-        message = send_message(service= service,
-            sender=our_email,
-            destination= participants[gifter],
-            obj= 'Amigo invisible',
-            body= f"""Te toca regalarle a {gifted}, buena suerte"""
-        )
+        for gifter, gifted in results.items():
+            body = f"""Te toca regalarle a {gifted}, buena suerte"""
+            if gifted == owner_name:
+                body = f"""Te toca regalarle a {gifted}, mas vale que pienses un buen regalo"""
+            message = send_message(service= service,
+                sender=our_email,
+                destination= participants[gifter],
+                obj= 'Amigo invisible',
+                body= body
+            )
 
 if __name__ == '__main__':
-    main()
+    main(True)
