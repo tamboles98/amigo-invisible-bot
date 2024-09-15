@@ -13,8 +13,8 @@ pytest = "*"
 factory-boy = "*"
 faker = "*"
 ruff = "*"
-review-app = {file = ".", editable = true}
 coverage = "*"
+amigoinvisible = {file = ".", editable = true}
 
 [requires]
 python_version = "3.12"
