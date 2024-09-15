@@ -44,27 +44,6 @@ class EmailService(ABC):
         pass
 
 
-class GmailService(EmailService):
-    TYPE = SupportedEmailServices.GMAIL
-    SCOPES = ['https://mail.google.com/']
-
-    def __init__(self, auth_helper: 'GoogleAuthService') -> None:
-        self._oauth_token = auth_helper.get_oauth2_token(self.SCOPES)
-        self._service: ty.Any = build('gmail', 'v1', credentials=self._oauth_token)
-
-    def send_email(self, email: 'MIMEText | MIMEMultipart') -> None:
-        body = {'raw': urlsafe_b64encode(email.as_bytes()).decode()}
-        (self._service.users().messages().send(userId='me', body=body).execute())
-
-
-class AuthService(ABC):
-    """Interface for the authentication backends."""
-
-    @abstractmethod
-    def __init__(self, params: AuthParams) -> None:
-        pass
-
-
 def build_message(
     sender: str, destination: str, obj: str, body: str, attachments: ty.Optional[list[str]] = None
 ) -> MIMEText | MIMEMultipart:
@@ -84,6 +63,27 @@ def build_message(
         for filename in attachments:
             message.add_attachment(message, filename)
     return message
+
+
+class GmailService(EmailService):
+    TYPE = SupportedEmailServices.GMAIL
+    SCOPES = ['https://mail.google.com/']
+
+    def __init__(self, auth_helper: 'GoogleAuthService') -> None:
+        self._oauth_token = auth_helper.get_oauth2_token(self.SCOPES)
+        self._service: ty.Any = build('gmail', 'v1', credentials=self._oauth_token)
+
+    def send_email(self, email: 'MIMEText | MIMEMultipart') -> None:
+        body = {'raw': urlsafe_b64encode(email.as_bytes()).decode()}
+        (self._service.users().messages().send(userId='me', body=body).execute())
+
+
+class AuthService(ABC):
+    """Interface for the authentication backends."""
+
+    @abstractmethod
+    def __init__(self, params: AuthParams) -> None:
+        pass
 
 
 class GoogleAuthService(AuthService):
