@@ -1,0 +1,58 @@
+[project]
+name = "amigoinvisible"
+description = "Run a raffle for a secret santa"
+version = "0.1.1"
+authors = [
+    { name = "Santiago Cebellán", email = "tamboles98@gmail.com" }
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+# This are loose dependencies, exact versions are handled by pipenv
+dependencies = [
+    "google-api-python-client",
+    "google-auth",
+    "google-auth-oauthlib"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["tests"]
+addopts = [
+    "--import-mode=importlib",
+]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.coverage.run]
+include = ["src/*"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
