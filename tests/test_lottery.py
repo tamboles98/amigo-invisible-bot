@@ -1,96 +1,85 @@
-import typing as ty
-from pathlib import Path
-from unittest.mock import Mock, create_autospec
+import random
 
-import faker
 import pytest
-from google.oauth2.credentials import Credentials as GoogleCredentials
+from faker import Faker
 
-from am_bot import email
-
-if ty.TYPE_CHECKING:
-    pass
-
-FIXTURES_DIR = Path.cwd() / 'tests' / 'data'
+import am_bot.lottery as lottery
 
 
 @pytest.fixture
-def auth_params() -> email.AuthParams:
-    return email.AuthParams(email.SupportedEmailServices.GMAIL, creds_path=FIXTURES_DIR / 'credentials')
+def get_guy() -> tuple[str, str]:
+    faker = Faker()
+    guy = faker.name()
+    email = faker.free_email()
+    return guy, email
 
 
 @pytest.fixture
-def mock_google_auth(monkeypatch: ty.Any) -> Mock:
-    oauth_provider_class = create_autospec(email.InstalledAppFlow, instance=False)
-    oauth_provider = create_autospec(email.InstalledAppFlow, instance=True)
-    oauth_provider_class.from_client_secrets_file.return_value = oauth_provider
-    oauth_provider.run_local_server.return_value = fake_token_factory()
+def participants() -> dict[str, str]:
+    length = random.randint(13, 17)
+    faker = Faker()
+    return {faker.name(): faker.free_email() for _ in range(length)}
 
-    monkeypatch.setattr(email, 'InstalledAppFlow', oauth_provider_class)
-    return oauth_provider
+
+@pytest.fixture(name='disallowed_pairs')
+def disallowed_pairs_foo(participants: dict[str, str], length: int = 5) -> list[tuple[str, str]]:
+    forbidden_givers = random.sample(list(participants.keys()), length)
+    forbidden_receivers = random.sample(list(participants.keys()), length)
+    return list(zip(forbidden_givers, forbidden_receivers))
 
 
 @pytest.fixture
-def mock_gmail_service(monkeypatch: ty.Any) -> Mock:
-    gmail_service_builder = create_autospec(email.build)
-    google_service = Mock()
-    gmail_service_builder.return_value = google_service
-
-    monkeypatch.setattr(email, 'build', gmail_service_builder)
-    return google_service
+def impossible_disallowed_pairs(participants: dict[str, str]) -> list[tuple[str, str]]:
+    # It generates a set of pairs where the first participant cannot gift
+    # any other participant
+    participants_names = list(participants.keys())
+    return [(participants_names[0], other) for other in participants_names[1:]]
 
 
-def fake_token_factory() -> GoogleCredentials:
-    # creds: dict[str, dict[str, str]], scopes: list[str]
-    # installed = creds['installed']
-    fake = faker.Faker()
-    return GoogleCredentials(
-        token=fake.sha256(),
-        refresh_token=fake.sha256(),
-        id_token=None,
-        token_uri=fake.uri(),  # installed['token_uri'],
-        client_id=fake.sha256(),  # installed['client_id'],
-        client_secret=fake.sha256(),  # installed['client_secret'],
-        scopes=email.GmailService.SCOPES,  # scopes,
-    )
+def test_sorteo(participants: dict[str, str], disallowed_pairs: list[tuple[str, str]]):
+    participants_names = list(participants.keys())
+    res = lottery.generate_lottery(participants_names, disallowed_pairs)
+    part_set = set(participants_names)
+    givers_set = set(res.keys())
+    receivers_set = set(res.values())
+    # Check that all the participants are gifting someone
+    assert part_set == givers_set
+    # Check that all the participants are receiving gifts
+    assert part_set == receivers_set
+    # Check that no one is gifting itself
+    assert not any(key == value for key, value in res.items())
+    # Check that no one is gifted twice
+    assert len(res.values()) == len(receivers_set)
 
 
-class TestGoogleAuthService:
-    def test_init(self, auth_params: email.AuthParams):
-        google_auth = email.GoogleAuthService(auth_params)
-        assert google_auth.params == auth_params
-        assert google_auth.json_path == auth_params.creds_path / 'gmail' / 'credentials.json'
-        assert isinstance(google_auth._creds, dict)
+def test_sorteo__empty_participants_errors(participants: dict[str, str]):
+    # Second test, check that the appropiate errors are raised when there
+    # are not enough participants for the lottery
+    participants_names = list(participants.keys())
+    with pytest.raises(ValueError):
+        lottery.generate_lottery([])
+    with pytest.raises(ValueError):
+        lottery.generate_lottery(participants_names[0:1])
 
-    def test_manual_auth_flow(self, auth_params: email.AuthParams, mock_google_auth: Mock):
-        google_auth = email.GoogleAuthService(auth_params)
-        assert google_auth.manual_auth_flow(scopes=email.GmailService.SCOPES) is not None
-
-    def test_get_oauth2_token_manual(self, auth_params: email.AuthParams, monkeypatch: ty.Any):
-        auth_params.interactive = True
-        manual_flow_mock = create_autospec(email.GoogleAuthService.manual_auth_flow, return_value=fake_token_factory())
-        monkeypatch.setattr(email.GoogleAuthService, 'manual_auth_flow', manual_flow_mock)
-        google_auth = email.GoogleAuthService(auth_params)
-        assert google_auth.get_oauth2_token(scopes=email.GmailService.SCOPES) is not None
-
-    def test_get_oauth2_token_auto(self, auth_params: email.AuthParams):
-        # Modify the auth_params to be non-interactive
-        auth_params.interactive = False
-        google_auth = email.GoogleAuthService(auth_params)
-        with pytest.raises(NotImplementedError):
-            google_auth.get_oauth2_token(scopes=email.GmailService.SCOPES)
+    # Third test, assert that an assertion is raised when there are duplicated names
+    with pytest.raises(AssertionError):
+        lottery.generate_lottery([participants_names[0], participants_names[0], participants_names[1]])
 
 
-class TestGmailService:
-    def test_init(self, auth_params: email.AuthParams, mock_google_auth: Mock):
-        google_auth = email.GoogleAuthService(auth_params)
-        gmail_service = email.GmailService(google_auth)
-        assert gmail_service._oauth_token is not None
-        assert gmail_service._service is not None
+def test_sorteo__disallowed_pairs(
+    participants: dict[str, str],
+    disallowed_pairs: list[tuple[str, str]],
+    impossible_disallowed_pairs: list[tuple[str, str]],
+):
+    # Fourth test, assert that disallowed pairs don't appear after the lottery
+    # try a bunch of times and check that no disallowed pairs appear
+    participants_names = list(participants.keys())
+    for _ in range(200):
+        res = lottery.generate_lottery(participants_names, disallowed_pairs)
+        res_set = set((key, value) for key, value in res.items())
+        assert not (set(disallowed_pairs).intersection(res_set))
 
-    def test_send_email(self, auth_params: email.AuthParams, mock_google_auth: Mock, mock_gmail_service: Mock):
-        # Very dummy test, to test properly we would need to send an actual email
-        google_auth = email.GoogleAuthService(auth_params)
-        gmail_service = email.GmailService(google_auth)
-        email_message = email.MIMEText('Test email')
-        gmail_service.send_email(email_message)
+    # Fifth test, assert that ValueError is raised if its impossible to generate
+    # a valid lottery result
+    with pytest.raises(ValueError):
+        lottery.generate_lottery(participants_names, impossible_disallowed_pairs)
