@@ -13,7 +13,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 # Gmail API utils
 from googleapiclient.discovery import build
 
-if ty.TYPE_CHECKING:
+if ty.TYPE_CHECKING:  # pragma: no cover, this is only used for type checking
     from google.oauth2.credentials import Credentials as GoogleCredentials
 
 
@@ -36,12 +36,10 @@ class EmailService(ABC):
     """Interface for the email services."""
 
     @abstractmethod
-    def __init__(self, auth_params: 'AuthService') -> None:
-        self.auth_params = auth_params
+    def __init__(self, auth_params: 'AuthService') -> None: ...
 
     @abstractmethod
-    def send_email(self, email: 'MIMEText | MIMEMultipart') -> None:
-        pass
+    def send_email(self, email: 'MIMEText | MIMEMultipart') -> None: ...
 
 
 def build_message(
@@ -54,7 +52,8 @@ def build_message(
         message['to'] = destination
         message['from'] = sender
         message['subject'] = obj
-    else:
+    else:  # pragma: no cover
+        # This is not supported yet
         message = MIMEMultipart()
         message['to'] = destination
         message['from'] = sender
@@ -82,8 +81,7 @@ class AuthService(ABC):
     """Interface for the authentication backends."""
 
     @abstractmethod
-    def __init__(self, params: AuthParams) -> None:
-        pass
+    def __init__(self, params: AuthParams) -> None: ...
 
 
 class GoogleAuthService(AuthService):

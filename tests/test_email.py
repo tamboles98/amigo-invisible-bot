@@ -70,6 +70,11 @@ class TestGoogleAuthService:
         assert google_auth.json_path == auth_params.creds_path / 'gmail' / 'credentials.json'
         assert isinstance(google_auth._creds, dict)
 
+    def test_init_no_creds(self, auth_params: email.AuthParams):
+        auth_params.creds_path = Path.cwd() / 'non_existent'
+        with pytest.raises(FileNotFoundError):
+            email.GoogleAuthService(auth_params)
+
     def test_manual_auth_flow(self, auth_params: email.AuthParams, mock_google_auth: Mock):
         google_auth = email.GoogleAuthService(auth_params)
         assert google_auth.manual_auth_flow(scopes=email.GmailService.SCOPES) is not None
