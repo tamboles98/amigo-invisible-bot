@@ -8,6 +8,26 @@ from collections import deque
 def generate_lottery(
     participants: list[str], disallowed_pairs: ty.Optional[list[tuple[str, str]]] = None
 ) -> dict[str, str]:
+    """
+    Generates a secret Santa lottery assignment.
+
+    Each participant is assigned another participant to give a gift to, ensuring no
+    participant is assigned to themselves and no disallowed pairs are assigned.
+
+    Args:
+        participants (list[str]): A list of participant names.
+        disallowed_pairs (Optional[list[tuple[str, str]]], optional): An optional list
+            of tuples representing pairs of participants that should not be assigned
+            to each other. Defaults to None.
+
+    Returns:
+        dict[str, str]: A dictionary where keys are givers and values are receivers.
+
+    Raises:
+        ValueError: If there are less than 2 participants or if no valid lottery
+            could be found after 200 attempts.
+        AssertionError: If there are duplicate participants in the list.
+    """
     if disallowed_pairs is None:
         disallowed_pairs = []
     assert len(set(participants)) == len(participants), 'Duplicate participants'

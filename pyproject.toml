@@ -38,6 +38,8 @@ select = [
     "SIM",
     # isort
     "I",
+    # Docstrings
+    "D"
 ]
 
 [tool.ruff]
@@ -48,6 +50,9 @@ indent-width = 4
 quote-style = "single"
 indent-style = "space"
 docstring-code-format = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google" 
 
 [tool.coverage.run]
 include = ["src/*"]

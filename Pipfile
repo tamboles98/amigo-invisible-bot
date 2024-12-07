@@ -15,6 +15,9 @@ faker = "*"
 ruff = "*"
 coverage = "*"
 amigoinvisible = {file = ".", editable = true}
+sphinx = "*"
+sphinx-rtd-theme = "*"
+sphinx-autoapi = "*"
 
 [requires]
 python_version = "3.12"
